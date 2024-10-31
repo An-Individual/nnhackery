@@ -1,0 +1,24 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="MNIST\Data\t10k-images.idx3-ubyte" />
+    <None Remove="MNIST\Data\t10k-labels.idx1-ubyte" />
+    <None Remove="MNIST\Data\train-images.idx3-ubyte" />
+    <None Remove="MNIST\Data\train-labels.idx1-ubyte" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="MNIST\Data\t10k-images.idx3-ubyte" />
+    <EmbeddedResource Include="MNIST\Data\t10k-labels.idx1-ubyte" />
+    <EmbeddedResource Include="MNIST\Data\train-images.idx3-ubyte" />
+    <EmbeddedResource Include="MNIST\Data\train-labels.idx1-ubyte" />
+  </ItemGroup>
+
+</Project>
