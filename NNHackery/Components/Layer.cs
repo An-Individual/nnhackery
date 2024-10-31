@@ -1,4 +1,6 @@
-﻿using System;
+﻿using MathNet.Numerics.LinearAlgebra;
+using MathNet.Numerics.LinearAlgebra.Double;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data.SqlTypes;
@@ -7,26 +9,15 @@ using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
 using System.Threading.Tasks;
-using NNHackery.LinearAlgebra;
 
 namespace NNHackery.Components
 {
     public class Layer
     {
-        public static double GetWeight(Matrix matrix, int sourceNodeIndex, int targetNodeIndex)
-        {
-            return matrix[sourceNodeIndex, targetNodeIndex];
-        }
-
-        public static void SetWeight(Matrix matrix, int sourceNodeIndex, int targetNodeIndex, double value)
-        {
-            matrix[sourceNodeIndex, targetNodeIndex] = value;
-        }
-
         public static Layer MakeLayer(int oldNodeCount, int newNodeCount)
         {
-            Matrix weights = new Matrix(oldNodeCount, newNodeCount);
-            Vector biases = new Vector(newNodeCount);
+            Matrix<double> weights = Matrix.Build.Dense(newNodeCount, oldNodeCount);
+            Vector<double> biases = Vector.Build.Dense(newNodeCount);
 
             return new Layer(weights, biases);
         }
@@ -41,9 +32,9 @@ namespace NNHackery.Components
             return result;
         }
 
-        private Layer(Matrix weights, Vector biases)
+        private Layer(Matrix<double> weights, Vector<double> biases)
         {
-            if (weights.Height != biases.Size)
+            if (weights.RowCount != biases.Count)
             {
                 throw new Exception("There are a different number of biases and weight rows.");
             }
@@ -52,28 +43,27 @@ namespace NNHackery.Components
             Biases = biases;
         }
 
-        public Matrix Weights { get; }
+        public Matrix<double> Weights { get; }
 
-        public Vector Biases { get; }
+        public Vector<double> Biases { get; }
 
-        public Vector ApplyToVector(Vector vector, Func<double, double>? activationFunc = null)
+        public Vector<double> ApplyToVector(Vector<double> vector, Func<double, double>? activationFunc = null)
         {
             if(vector == null)
             {
                 throw new ArgumentNullException(nameof(vector));
             }
 
-            if(vector.Size != Weights.Width)
+            if(vector.Count != Weights.ColumnCount)
             {
                 throw new Exception("Vector has incorrect number of values");
             }
 
-            Vector result = Matrix.DotProduct(Weights, vector);
-            result.Add(Biases);
+            Vector<double> result = Weights * vector + Biases;
 
             if(activationFunc != null)
             {
-                result.ApplyElementwiseFunction(activationFunc);
+                result.MapInplace(activationFunc);
             }
 
             return result;
@@ -91,32 +81,51 @@ namespace NNHackery.Components
 
         public static Layer Deserialize(Stream stream)
         {
-            Matrix weights = ReadMatrix(stream);
-            Vector biases = new Vector(ReadMatrix(stream));
+            Matrix<double> weights = ReadMatrix(stream);
+            Vector<double> biases = ReadVector(stream);
 
             return new Layer(weights, biases);
         }
 
-        private static Matrix ReadMatrix(Stream stream)
+        private static Matrix<double> ReadMatrix(Stream stream)
         {
             byte[] intBuffer = new byte[sizeof(int)];
 
             stream.ReadExactly(intBuffer);
-            int width = BitConverter.ToInt32(intBuffer);
+            int columns = BitConverter.ToInt32(intBuffer);
 
             stream.ReadExactly(intBuffer);
-            int height = BitConverter.ToInt32(intBuffer);
+            int rows = BitConverter.ToInt32(intBuffer);
 
-            Matrix result = new Matrix(width, height);
+            Matrix<double> result = Matrix<double>.Build.Dense(rows, columns);
             byte[] doubleBuffer = new byte[sizeof(double)];
 
-            for (int y = 0; y < result.Height; y++)
+            for (int r = 0; r < rows; r++)
             {
-                for (int x = 0; x < result.Width; x++)
+                for (int c = 0; c < columns; c++)
                 {
                     stream.ReadExactly(doubleBuffer);
-                    result[x,y] = BitConverter.ToDouble(doubleBuffer);
+                    result[r, c] = BitConverter.ToDouble(doubleBuffer);
                 }
+            }
+
+            return result;
+        }
+
+        private static Vector<double> ReadVector(Stream stream)
+        {
+            byte[] intBuffer = new byte[sizeof(int)];
+
+            stream.ReadExactly(intBuffer);
+            int count = BitConverter.ToInt32(intBuffer);
+
+            Vector<double> result = Vector<double>.Build.Dense(count);
+            byte[] doubleBuffer = new byte[sizeof(double)];
+
+            for (int i = 0; i < count; i++)
+            {
+                stream.ReadExactly(doubleBuffer);
+                result[i] = BitConverter.ToDouble(doubleBuffer);
             }
 
             return result;
@@ -134,20 +143,30 @@ namespace NNHackery.Components
         public void Serialize(Stream stream)
         {
             SerializeMatrix(stream, Weights);
-            SerializeMatrix(stream, Biases.Matrix);
+            SerializeVector(stream, Biases);
         }
 
-        private static void SerializeMatrix(Stream stream, Matrix matrix)
+        private static void SerializeMatrix(Stream stream, Matrix<double> matrix)
         {
-            stream.Write(BitConverter.GetBytes(matrix.Width));
-            stream.Write(BitConverter.GetBytes(matrix.Height));
+            stream.Write(BitConverter.GetBytes(matrix.ColumnCount));
+            stream.Write(BitConverter.GetBytes(matrix.RowCount));
 
-            for (int y = 0; y < matrix.Height; y++)
+            for (int row = 0; row < matrix.RowCount; row++)
             {
-                for (int x = 0; x < matrix.Width; x++)
+                for (int col = 0; col < matrix.ColumnCount; col++)
                 {
-                    stream.Write(BitConverter.GetBytes(matrix[x,y]));
+                    stream.Write(BitConverter.GetBytes(matrix[row, col]));
                 }
+            }
+        }
+
+        private static void SerializeVector(Stream stream, Vector<double> vector)
+        {
+            stream.Write(BitConverter.GetBytes(vector.Count));
+
+            for (int i = 0; i < vector.Count; i++)
+            {
+                stream.Write(BitConverter.GetBytes(vector[i]));
             }
         }
 

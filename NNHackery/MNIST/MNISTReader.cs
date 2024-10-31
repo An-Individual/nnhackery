@@ -1,4 +1,4 @@
-﻿using NNHackery.LinearAlgebra;
+﻿using MathNet.Numerics.LinearAlgebra;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -73,7 +73,7 @@ namespace NNHackery.MNIST
                 {
                     Label = label,
                     LabelVector = MakeLabelVector(label),
-                    FlattenedImage = new Vector(image),
+                    FlattenedImage = Vector<double>.Build.Dense(image),
                     Width = imageWidth,
                     Height = imageHeight
                 };
@@ -82,14 +82,14 @@ namespace NNHackery.MNIST
             return result;
         }
 
-        private static Vector MakeLabelVector(byte label)
+        private static Vector<double> MakeLabelVector(byte label)
         {
             if(label >= 10)
             {
                 throw new Exception("Label is not a single digit.");
             }
 
-            Vector result = new Vector(10);
+            Vector<double> result = Vector<double>.Build.Dense(10);
             result[label] = 1;
             return result;
         }

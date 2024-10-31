@@ -1,5 +1,5 @@
-﻿using NNHackery.Components;
-using NNHackery.LinearAlgebra;
+﻿using MathNet.Numerics.LinearAlgebra;
+using NNHackery.Components;
 using NNHackery.MNIST;
 using NNHackery.Trainers;
 
@@ -46,8 +46,8 @@ namespace NNHackery
                     batchCount++;
                     Console.Write(batchCount);
 
-                    Vector[] inputs = batch.Select(i => i.FlattenedImage).ToArray();
-                    Vector[] expected = batch.Select(i => i.LabelVector).ToArray();
+                    Vector<double>[] inputs = batch.Select(i => i.FlattenedImage).ToArray();
+                    Vector<double>[] expected = batch.Select(i => i.LabelVector).ToArray();
 
                     QuadraticTrainer.RunGradientDescent(network, inputs, expected, learningRate);
                 }
@@ -58,7 +58,7 @@ namespace NNHackery
                 int passes = 0;
                 foreach(MNISTTestImage testImage in testData)
                 {
-                    Vector output = network.ApplyNetwork(testImage.FlattenedImage);
+                    Vector<double> output = network.ApplyNetwork(testImage.FlattenedImage);
 
                     if(testImage.Label == GetHighestVectorIndex(output))
                     {
@@ -70,11 +70,11 @@ namespace NNHackery
             }
         }
 
-        private static int GetHighestVectorIndex(Vector vector)
+        private static int GetHighestVectorIndex(Vector<double> vector)
         {
             int highestIndex = 0;
             double highestValue = vector[0];
-            for(int i = 1; i < vector.Size; i++)
+            for(int i = 1; i < vector.Count; i++)
             {
                 if (vector[i] > highestValue)
                 {
@@ -89,15 +89,15 @@ namespace NNHackery
         {
             Parallel.ForEach(network.Layers, layer =>
             {
-                Parallel.For(0, layer.Weights.Width, x =>
+                Parallel.For(0, layer.Weights.ColumnCount, col =>
                 {
-                    Parallel.For(0, layer.Weights.Height, y =>
+                    Parallel.For(0, layer.Weights.RowCount, row =>
                     {
-                        layer.Weights[x, y] = Random.Shared.NextDouble();
+                        layer.Weights[row, col] = Random.Shared.NextDouble();
                     });
                 });
 
-                Parallel.For(0, layer.Biases.Size, i =>
+                Parallel.For(0, layer.Biases.Count, i =>
                 {
                     layer.Biases[i] = Random.Shared.NextDouble();
                 });

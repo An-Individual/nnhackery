@@ -1,5 +1,5 @@
-﻿using NNHackery.Components;
-using NNHackery.LinearAlgebra;
+﻿using MathNet.Numerics.LinearAlgebra;
+using NNHackery.Components;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,27 +15,27 @@ namespace NNHackery.Trainers
         {
             public Network Network { get; set; }
 
-            public Vector Input { get; set; }
+            public Vector<double> Input { get; set; }
 
-            public Vector Expected { get; set; }
+            public Vector<double> Expected { get; set; }
 
-            public Vector[] Vectors { get; set; }
+            public Vector<double>[] Vectors { get; set; }
 
-            public Vector[] Activations { get; set; }
+            public Vector<double>[] Activations { get; set; }
 
-            public Vector[] Errors { get; set; }
+            public Vector<double>[] Errors { get; set; }
         }
 
         private class LayerGradient
         {
-            public Matrix WeightGrade { get; set; }
+            public Matrix<double> WeightGrade { get; set; }
 
-            public Vector BiaseGrade { get; set; }
+            public Vector<double> BiaseGrade { get; set; }
 
             public void ApplyToLayer(Layer layer, double learningRateOverBatchSize)
             {
-                layer.Weights.ApplyElementwiseMatrixFunction(WeightGrade, (w, g) => w - (learningRateOverBatchSize * g));
-                layer.Biases.Matrix.ApplyElementwiseMatrixFunction(BiaseGrade.Matrix, (b, g) => b - (learningRateOverBatchSize * g));
+                layer.Weights.MapIndexedInplace((x, y, w) => w - (learningRateOverBatchSize * WeightGrade[x, y]));
+                layer.Biases.MapIndexedInplace((i, b) => b - (learningRateOverBatchSize * BiaseGrade[i]));
             }
         }
 
@@ -77,7 +77,7 @@ namespace NNHackery.Trainers
             }
         }
 
-        public static void RunGradientDescent(Network network, Vector[] inputs, Vector[] expectedOutputs, double learningRate)
+        public static void RunGradientDescent(Network network, Vector<double>[] inputs, Vector<double>[] expectedOutputs, double learningRate)
         {
             ArgumentNullException.ThrowIfNull(network);
             ArgumentNullException.ThrowIfNull(inputs);
@@ -109,7 +109,7 @@ namespace NNHackery.Trainers
             });
         }
 
-        private static LayerGradient[] CalculateGradients(Network network, Vector input, Vector expected)
+        private static LayerGradient[] CalculateGradients(Network network, Vector<double> input, Vector<double> expected)
         {
             IterationState state = new IterationState();
             state.Network = network;
@@ -123,7 +123,7 @@ namespace NNHackery.Trainers
 
             Parallel.For(0, result.Length, i =>
             {
-                Vector activation;
+                Vector<double> activation;
                 if(i == 0)
                 {
                     activation = state.Input;
@@ -141,10 +141,10 @@ namespace NNHackery.Trainers
 
         private static void CalculateVectorsAndActivations(IterationState state)
         {
-            state.Vectors = new Vector[state.Network.Layers.Length];
-            state.Activations = new Vector[state.Network.Layers.Length];
+            state.Vectors = new Vector<double>[state.Network.Layers.Length];
+            state.Activations = new Vector<double>[state.Network.Layers.Length];
 
-            Vector currentVector = state.Input;
+            Vector<double> currentVector = state.Input;
 
             for (int i = 0; i < state.Network.Layers.Length; i++)
             {
@@ -152,14 +152,14 @@ namespace NNHackery.Trainers
 
                 state.Vectors[i] = currentVector;
                 state.Activations[i] = currentVector.Clone();
-                state.Activations[i].ApplyElementwiseFunction(state.Network.ActivationFunction);
+                state.Activations[i].MapInplace(state.Network.ActivationFunction);
                 currentVector = state.Activations[i];
             }
         }
 
         private static void CalculateErrors(IterationState state)
         {
-            state.Errors = new Vector[state.Network.Layers.Length];
+            state.Errors = new Vector<double>[state.Network.Layers.Length];
 
             int lastIndex = state.Network.Layers.Length - 1;
 
@@ -171,40 +171,31 @@ namespace NNHackery.Trainers
             }
         }
 
-        private static Vector ComputeLastLayerError(Vector vector, Vector activation, Vector expectedOutput, Func<double, double> activationDerivative)
+        private static Vector<double> ComputeLastLayerError(Vector<double> vector, Vector<double> activation, Vector<double> expectedOutput, Func<double, double> activationDerivative)
         {
             // Subtract the expected output from the activation (aka, the final output).
-            Vector difference = Vector.ElementwiseCombine(activation, expectedOutput, (a, e) => a - e);
+            Vector<double> difference = activation - expectedOutput;
 
             // The result is an elementwise multiplication of the difference vector and the layer's vector with
             // the derivative of the activation function applied.
-            return Vector.ElementwiseCombine(difference, vector, (dif, der) => dif * activationDerivative(der));
+            return difference.MapIndexed((i, dif) => dif * activationDerivative(vector[i]));
         }
 
-        private static Vector ComputeLayerError(Vector vector, Layer parentLayer, Vector parentError, Func<double, double> activationDerivative)
+        private static Vector<double> ComputeLayerError(Vector<double> vector, Layer parentLayer, Vector<double> parentError, Func<double, double> activationDerivative)
         {
             // Dot product of the transpose of the parent layer's weights on the parent's error.
-            Vector transposeError = Matrix.DotProduct(parentLayer.Weights.Transpose(), parentError);
+            Vector<double> transposeError = parentLayer.Weights.TransposeThisAndMultiply(parentError);
 
             // The result is an elementwise multiplication of the transpose error vector and the layer's vector with
             // the derivative of the activation function applied.
-            return Vector.ElementwiseCombine(transposeError, vector, (dif, der) => dif * activationDerivative(der));
+            return transposeError.MapIndexed((i, dif) => dif * activationDerivative(vector[i]));
         }
 
-        private static LayerGradient CalculateLayerGradients(Vector childActivations, Vector layerError)
+        private static LayerGradient CalculateLayerGradients(Vector<double> childActivations, Vector<double> layerError)
         {
             LayerGradient result = new LayerGradient();
-            result.WeightGrade = new Matrix(childActivations.Size, layerError.Size);
-
-            Parallel.For(0, childActivations.Size, a =>
-            {
-                Parallel.For(0, layerError.Size, e =>
-                {
-                    Layer.SetWeight(result.WeightGrade, a, e, childActivations[a] * layerError[e]);
-                });
-            });
-
-            result.BiaseGrade = layerError.Clone();
+            result.WeightGrade = layerError.ToColumnMatrix() * childActivations.ToRowMatrix();
+            result.BiaseGrade = layerError;
 
             return result;
         }

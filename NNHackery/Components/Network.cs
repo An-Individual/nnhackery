@@ -1,9 +1,9 @@
-﻿using System;
+﻿using MathNet.Numerics.LinearAlgebra;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using NNHackery.LinearAlgebra;
 
 namespace NNHackery.Components
 {
@@ -92,9 +92,9 @@ namespace NNHackery.Components
 
         public Layer[] Layers { get; }
 
-        public Vector ApplyNetwork(Vector inputState)
+        public Vector<double> ApplyNetwork(Vector<double> inputState)
         {
-            Vector currentState = inputState;
+            Vector<double> currentState = inputState;
             for(int i = 0; i < Layers.Length; i++)
             {
                 currentState = Layers[i].ApplyToVector(currentState, ActivationFunction);

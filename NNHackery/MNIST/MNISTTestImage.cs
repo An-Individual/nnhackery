@@ -1,4 +1,4 @@
-﻿using NNHackery.LinearAlgebra;
+﻿using MathNet.Numerics.LinearAlgebra;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,9 +11,9 @@ namespace NNHackery.MNIST
     {
         public byte Label { get; set; }
 
-        public Vector FlattenedImage { get; set; }
+        public Vector<double> FlattenedImage { get; set; }
 
-        public Vector LabelVector { get; set; }
+        public Vector<double> LabelVector { get; set; }
 
         public int Width { get; set; }
 
