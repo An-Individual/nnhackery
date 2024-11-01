@@ -43,9 +43,9 @@ namespace NNHackery.Components
             Biases = biases;
         }
 
-        public Matrix<double> Weights { get; }
+        public Matrix<double> Weights { get; set; }
 
-        public Vector<double> Biases { get; }
+        public Vector<double> Biases { get; set; }
 
         public Vector<double> ApplyToVector(Vector<double> vector, Func<double, double>? activationFunc = null)
         {

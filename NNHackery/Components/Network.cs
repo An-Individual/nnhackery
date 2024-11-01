@@ -15,7 +15,7 @@ namespace NNHackery.Components
             {
                 public static double Sigmoid(double value)
                 {
-                    return 1 / (1 + Math.Exp(-1 * value));
+                    return 1.0 / (1.0 + Math.Exp(-1 * value));
                 }
 
                 // Rectificed Linear Unit
@@ -29,9 +29,9 @@ namespace NNHackery.Components
                 {
                     // Pulled from https://pytorch.org/docs/stable/generated/torch.nn.GELU.html
                     return 0.5 * value * (
-                        1 + Math.Tanh(
-                            Math.Sqrt(2 / Math.PI) * (
-                                value + 0.044715 * Math.Pow(value, 3)
+                        1.0 + Math.Tanh(
+                            Math.Sqrt(2.0 / Math.PI) * (
+                                value + 0.044715 * Math.Pow(value, 3.0)
                             )
                             )
                         );
@@ -43,7 +43,7 @@ namespace NNHackery.Components
                 // Pulled from: https://towardsdatascience.com/derivative-of-the-sigmoid-function-536880cf918e
                 public static double DSigmoid(double value)
                 {
-                    return Functions.Sigmoid(value) * (1 - Functions.Sigmoid(value));
+                    return Functions.Sigmoid(value) * (1.0 - Functions.Sigmoid(value));
                 }
             }
         }
